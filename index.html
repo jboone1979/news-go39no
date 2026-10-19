@@ -60,8 +60,8 @@ async function feed(url){
 async function load(){
   const st=document.getElementById("st");st.textContent="Refreshing…";
   for(const k in cache)delete cache[k];
-  let ok=0,bad=0;const out=[];
-  for(const sec of SECTIONS){
+  let ok=0,bad=0;
+  const out=await Promise.all(SECTIONS.map(async sec=>{
     const res=await Promise.allSettled(sec.feeds.map(([src,u])=>feed(u).then(it=>it.map(x=>({...x,src})))));
     let items=[],errs=[];
     res.forEach((r,i)=>{if(r.status==="fulfilled"){ok++;items.push(...r.value)}else{bad++;errs.push(sec.feeds[i][0])}});
@@ -71,10 +71,10 @@ async function load(){
       if(sec.only&&sec.only[x.src]&&!sec.only[x.src].test(x.t))return false;return true});
     items.sort((a,b)=>((sec.boost&&sec.boost.test(b.t))-(sec.boost&&sec.boost.test(a.t)))||(b.d-a.d));
     items=items.slice(0,sec.n);
-    out.push(`<section class="card"><h2>${esc(sec.name)}</h2>`+
+    return (`<section class="card"><h2>${esc(sec.name)}</h2>`+
       (items.length?`<ul>${items.map(x=>`<li><a href="${esc(x.l)}" target="_blank" rel="noopener">${esc(x.t)}</a><div class="m">${esc(x.src)} · ${etTime(x.d)} · ${ago(x.d)}</div></li>`).join("")}</ul>`:`<p class="m">Nothing fresh from these sources right now.</p>`)+
       (errs.length?`<div class="err">Couldn't load: ${esc(errs.join(", "))}</div>`:"")+`</section>`);
-  }
+  }));
   document.getElementById("main").innerHTML=out.join("");
   try{localStorage.setItem("newsHTML",document.getElementById("main").innerHTML)}catch(e){}
   st.textContent=`Updated ${et(new Date())}`+(bad?` · ${bad} feed(s) failed`:"");
