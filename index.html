@@ -14,9 +14,24 @@ ul{list-style:none;margin:0;padding:0}li{padding:9px 0;border-top:1px solid var(
 a{color:var(--ink);font-weight:600;text-decoration:none}a:hover{text-decoration:underline}
 .m{font-size:12px;color:var(--mute)}.err{font-size:12px;color:#d92d20}footer{text-align:center;color:var(--mute);font-size:12px;padding:0 16px 24px}
 nav{display:flex;gap:6px;width:100%}nav a{padding:7px 12px;border-radius:999px;border:1px solid var(--line);font-size:14px;color:var(--ink);text-decoration:none;font-weight:600}nav a.on{background:var(--acc);border-color:var(--acc);color:#fff}
+.mkt{max-width:1100px;margin:0 auto;padding:0 12px}.mkt .box{background:var(--card);border:1px solid var(--line);border-radius:14px;overflow:hidden;min-height:46px}
+.mkt .cap{font-size:11px;color:var(--mute);margin:4px 4px 0;display:flex;justify-content:space-between}.mkt .cap a{color:var(--mute);font-weight:400}
 </style></head><body>
-<header><nav><a class="on" href="./">Live headlines</a><a href="brief.html">Morning brief</a></nav><h1>Live headlines</h1><button id="rf">Refresh</button><div id="st">Loading…</div></header><main id="main"></main>
-<footer>Live from WSJ, Bloomberg, Fox News, WATE, Spaceflight Now, CBS Sports RSS via rss2json.com. Updates every 15 min while open.</footer>
+<header><nav><a class="on" href="./">Live headlines</a><a href="brief.html">Morning brief</a></nav><h1>Live headlines</h1><button id="rf">Refresh</button><div id="st">Loading…</div></header>
+<div class="mkt"><div class="box" id="tv"></div><div class="cap"><span>S&amp;P, Dow, Nasdaq 100, Russell = index CFDs; quotes may be delayed</span><a href="https://www.tradingview.com/" target="_blank" rel="noopener nofollow">Quotes by TradingView</a></div></div><main id="main"></main>
+<footer>Live from WSJ, Bloomberg, Fox News, WATE, Spaceflight Now, CBS Sports RSS via rss2json.com. Headlines update every 15 min while open; market quotes stream live from TradingView.</footer>
+<script>
+(function(){
+const S=[["FOREXCOM:SPXUSD","S&P 500"],["FOREXCOM:DJI","Dow"],["FOREXCOM:NSXUSD","Nasdaq 100"],["PYTH:US10Y","10-yr yield %"],["FOREXCOM:US2000","Russell 2000"],["CAPITALCOM:VIX","VIX"],["TVC:USOIL","Oil (WTI)"],["TVC:GOLD","Gold"],["BITSTAMP:BTCUSD","Bitcoin"]];
+const mq=window.matchMedia("(prefers-color-scheme: dark)");
+function render(){const el=document.getElementById("tv");el.innerHTML="";
+ const c=document.createElement("div");c.className="tradingview-widget-container";const w=document.createElement("div");w.className="tradingview-widget-container__widget";c.appendChild(w);
+ const s=document.createElement("script");s.src="https://s3.tradingview.com/external-embedding/embed-widget-ticker-tape.js";s.async=true;
+ s.textContent=JSON.stringify({symbols:S.map(([proName,title])=>({proName,title})),showSymbolLogo:false,isTransparent:true,displayMode:"adaptive",colorTheme:mq.matches?"dark":"light",locale:"en"});
+ c.appendChild(s);el.appendChild(c);}
+render();(mq.addEventListener?mq.addEventListener("change",render):mq.addListener(render));
+})();
+</script>
 <script>
 const P="https://api.rss2json.com/v1/api.json?rss_url=";
 const SECTIONS=[
