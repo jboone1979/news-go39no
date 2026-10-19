@@ -1,0 +1,66 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="apple-mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="Josh's News"><meta name="mobile-web-app-capable" content="yes"><meta name="robots" content="noindex">
+<title>Josh's News · Live headlines</title><style>
+:root{--bg:#f4f5f7;--card:#fff;--ink:#16181d;--mute:#667085;--acc:#ff8200;--line:#e6e8ec}
+@media(prefers-color-scheme:dark){:root{--bg:#0f1115;--card:#181b21;--ink:#eceef2;--mute:#9aa3b2;--line:#262a33}}
+*{box-sizing:border-box}body{margin:0;font:16px/1.45 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;background:var(--bg);color:var(--ink)}
+header{padding:18px 16px 6px;max-width:1100px;margin:auto;display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+h1{margin:0;font-size:22px;flex:1}#st{color:var(--mute);font-size:13px;width:100%}
+button{background:var(--acc);color:#fff;border:0;border-radius:10px;padding:8px 14px;font-weight:600;font-size:15px}
+main{max-width:1100px;margin:auto;padding:8px 12px 28px;display:grid;gap:14px;grid-template-columns:repeat(auto-fit,minmax(320px,1fr))}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px 16px}
+h2{margin:0 0 6px;font-size:15px;text-transform:uppercase;letter-spacing:.06em;color:var(--acc)}
+ul{list-style:none;margin:0;padding:0}li{padding:9px 0;border-top:1px solid var(--line)}li:first-child{border-top:0}
+a{color:var(--ink);font-weight:600;text-decoration:none}a:hover{text-decoration:underline}
+.m{font-size:12px;color:var(--mute)}.err{font-size:12px;color:#d92d20}footer{text-align:center;color:var(--mute);font-size:12px;padding:0 16px 24px}
+nav{display:flex;gap:6px;width:100%}nav a{padding:7px 12px;border-radius:999px;border:1px solid var(--line);font-size:14px;color:var(--ink);text-decoration:none;font-weight:600}nav a.on{background:var(--acc);border-color:var(--acc);color:#fff}
+</style></head><body>
+<header><nav><a class="on" href="./">Live headlines</a><a href="brief.html">Morning brief</a></nav><h1>Live headlines</h1><button id="rf">Refresh</button><div id="st">Loading…</div></header><main id="main"></main>
+<footer>Live from WSJ, Bloomberg, Fox News, WATE, Spaceflight Now, CBS Sports RSS via rss2json.com. Updates every 15 min while open.</footer>
+<script>
+const P="https://api.rss2json.com/v1/api.json?rss_url=";
+const SECTIONS=[
+ {name:"Top stories",n:6,feeds:[["WSJ","https://feeds.content.dowjones.io/public/rss/RSSWorldNews"],["Fox News","https://moxie.foxnews.com/google-publisher/latest.xml"],["Fox News","https://moxie.foxnews.com/google-publisher/world.xml"]],skip:/outkick/i},
+ {name:"Markets & business",n:6,feeds:[["WSJ","https://feeds.content.dowjones.io/public/rss/RSSMarketsMain"],["Bloomberg","https://feeds.bloomberg.com/markets/news.rss"]],skip:/\/videos\/|-mv[a-z0-9]{6}$/},
+ {name:"Knoxville & Tennessee",n:6,feeds:[["WATE","https://www.wate.com/feed/"]]},
+ {name:"Space & tech",n:6,feeds:[["Spaceflight Now","https://spaceflightnow.com/feed/"],["Bloomberg","https://feeds.bloomberg.com/technology/news.rss"]],skip:/\/videos\/|-mv[a-z0-9]{6}$/,boost:/spacex|musk|starship|starlink|falcon/i},
+ {name:"Sports",n:6,feeds:[["CBS Sports NFL","https://www.cbssports.com/rss/headlines/nfl/"],["CBS Sports CFB","https://www.cbssports.com/rss/headlines/college-football/"],["WATE","https://www.wate.com/feed/"]],keep:/./,boost:/vols|tennessee|heupel|neyland|titans/i,
+  only:{"WATE":/vols|tennessee football|heupel|neyland|titans/i}}
+];
+const MAXH=36,cache={};
+const esc=s=>String(s||"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const strip=s=>{const d=document.createElement("div");d.innerHTML=s||"";return (d.textContent||"").trim()};
+const ct=d=>d.toLocaleString("en-US",{timeZone:"America/Chicago",weekday:"short",month:"short",day:"numeric",hour:"numeric",minute:"2-digit"})+" CT";
+const ago=d=>{const h=(Date.now()-d)/36e5;return h<1?Math.max(1,Math.round(h*60))+"m ago":Math.round(h)+"h ago"};
+async function feed(url){
+  if(cache[url])return cache[url];
+  const p=fetch(P+encodeURIComponent(url),{cache:"no-store"}).then(r=>r.json()).then(j=>{if(j.status!=="ok")throw Error(j.message||"error");
+    return j.items.map(i=>({t:strip(i.title),l:i.link,d:new Date(i.pubDate.replace(" ","T")+"Z"),s:strip(i.description).slice(0,180)}))});
+  cache[url]=p;return p;
+}
+async function load(){
+  const st=document.getElementById("st");st.textContent="Refreshing…";
+  for(const k in cache)delete cache[k];
+  let ok=0,bad=0;const out=[];
+  for(const sec of SECTIONS){
+    const res=await Promise.allSettled(sec.feeds.map(([src,u])=>feed(u).then(it=>it.map(x=>({...x,src})))));
+    let items=[],errs=[];
+    res.forEach((r,i)=>{if(r.status==="fulfilled"){ok++;items.push(...r.value)}else{bad++;errs.push(sec.feeds[i][0])}});
+    const seen=new Set();
+    items=items.filter(x=>{const k=x.l.split("?")[0];if(seen.has(k))return false;seen.add(k);
+      if((Date.now()-x.d)/36e5>MAXH)return false;if(sec.skip&&sec.skip.test(x.l))return false;
+      if(sec.only&&sec.only[x.src]&&!sec.only[x.src].test(x.t))return false;return true});
+    items.sort((a,b)=>((sec.boost&&sec.boost.test(b.t))-(sec.boost&&sec.boost.test(a.t)))||(b.d-a.d));
+    items=items.slice(0,sec.n);
+    out.push(`<section class="card"><h2>${esc(sec.name)}</h2>`+
+      (items.length?`<ul>${items.map(x=>`<li><a href="${esc(x.l)}" target="_blank" rel="noopener">${esc(x.t)}</a><div class="m">${esc(x.src)} · ${ago(x.d)}</div></li>`).join("")}</ul>`:`<p class="m">Nothing fresh from these sources right now.</p>`)+
+      (errs.length?`<div class="err">Couldn't load: ${esc(errs.join(", "))}</div>`:"")+`</section>`);
+  }
+  document.getElementById("main").innerHTML=out.join("");
+  try{localStorage.setItem("newsHTML",document.getElementById("main").innerHTML)}catch(e){}
+  st.textContent=`Updated ${ct(new Date())}`+(bad?` · ${bad} feed(s) failed`:"");
+}
+const saved=localStorage.getItem("newsHTML");if(saved)document.getElementById("main").innerHTML=saved;
+document.getElementById("rf").onclick=load;load();setInterval(load,15*60*1000);
+document.addEventListener("visibilitychange",()=>{if(!document.hidden)load()});
+</script></body></html>
