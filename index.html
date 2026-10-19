@@ -34,8 +34,10 @@ const ct=d=>d.toLocaleString("en-US",{timeZone:"America/Chicago",weekday:"short"
 const ago=d=>{const h=(Date.now()-d)/36e5;return h<1?Math.max(1,Math.round(h*60))+"m ago":Math.round(h)+"h ago"};
 async function feed(url){
   if(cache[url])return cache[url];
-  const p=fetch(P+encodeURIComponent(url),{cache:"no-store"}).then(r=>r.json()).then(j=>{if(j.status!=="ok")throw Error(j.message||"error");
+  const get=()=>fetch(P+encodeURIComponent(url),{cache:"no-store"}).then(r=>r.json()).then(j=>{if(j.status!=="ok")throw Error(j.message||"error");
     return j.items.map(i=>({t:strip(i.title),l:i.link,d:new Date(i.pubDate.replace(" ","T")+"Z"),s:strip(i.description).slice(0,180)}))});
+  const wait=ms=>new Promise(r=>setTimeout(r,ms));
+  const p=get().catch(()=>wait(1500).then(get)).catch(()=>wait(4000).then(get));
   cache[url]=p;return p;
 }
 async function load(){
