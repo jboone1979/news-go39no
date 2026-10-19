@@ -30,7 +30,9 @@ const SECTIONS=[
 const MAXH=36,cache={};
 const esc=s=>String(s||"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 const strip=s=>{const d=document.createElement("div");d.innerHTML=s||"";return (d.textContent||"").trim()};
-const ct=d=>d.toLocaleString("en-US",{timeZone:"America/Chicago",weekday:"short",month:"short",day:"numeric",hour:"numeric",minute:"2-digit"})+" CT";
+const TZ="America/New_York";
+const et=d=>d.toLocaleString("en-US",{timeZone:TZ,weekday:"short",month:"short",day:"numeric",hour:"numeric",minute:"2-digit"})+" ET";
+const etTime=d=>{const n=new Date(),same=d.toLocaleDateString("en-US",{timeZone:TZ})===n.toLocaleDateString("en-US",{timeZone:TZ});return d.toLocaleString("en-US",same?{timeZone:TZ,hour:"numeric",minute:"2-digit"}:{timeZone:TZ,weekday:"short",hour:"numeric",minute:"2-digit"})+" ET"};
 const ago=d=>{const h=(Date.now()-d)/36e5;return h<1?Math.max(1,Math.round(h*60))+"m ago":Math.round(h)+"h ago"};
 async function feed(url){
   if(cache[url])return cache[url];
@@ -55,12 +57,12 @@ async function load(){
     items.sort((a,b)=>((sec.boost&&sec.boost.test(b.t))-(sec.boost&&sec.boost.test(a.t)))||(b.d-a.d));
     items=items.slice(0,sec.n);
     out.push(`<section class="card"><h2>${esc(sec.name)}</h2>`+
-      (items.length?`<ul>${items.map(x=>`<li><a href="${esc(x.l)}" target="_blank" rel="noopener">${esc(x.t)}</a><div class="m">${esc(x.src)} · ${ago(x.d)}</div></li>`).join("")}</ul>`:`<p class="m">Nothing fresh from these sources right now.</p>`)+
+      (items.length?`<ul>${items.map(x=>`<li><a href="${esc(x.l)}" target="_blank" rel="noopener">${esc(x.t)}</a><div class="m">${esc(x.src)} · ${etTime(x.d)} · ${ago(x.d)}</div></li>`).join("")}</ul>`:`<p class="m">Nothing fresh from these sources right now.</p>`)+
       (errs.length?`<div class="err">Couldn't load: ${esc(errs.join(", "))}</div>`:"")+`</section>`);
   }
   document.getElementById("main").innerHTML=out.join("");
   try{localStorage.setItem("newsHTML",document.getElementById("main").innerHTML)}catch(e){}
-  st.textContent=`Updated ${ct(new Date())}`+(bad?` · ${bad} feed(s) failed`:"");
+  st.textContent=`Updated ${et(new Date())}`+(bad?` · ${bad} feed(s) failed`:"");
 }
 const saved=localStorage.getItem("newsHTML");if(saved)document.getElementById("main").innerHTML=saved;
 document.getElementById("rf").onclick=load;load();setInterval(load,15*60*1000);
